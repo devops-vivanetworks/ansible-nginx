@@ -1,0 +1,17 @@
+---
+
+nginx_worker_connection: 1024
+nginx_worker_process: auto
+nginx_worker_rlimit_nofile: 8192
+nginx_keepalive_timeout: 75
+nginx_multi_accept: "off"
+nginx_use: "epoll"
+nginx_ssl_dir: "{{ nginx_etc_dir }}/ssl"
+nginx_sites_available_dir: "{{ nginx_etc_dir }}/sites-available"
+nginx_sites_enabled_dir: "{{ nginx_etc_dir }}/sites-enabled"
+nginx_upstream_dir: "{{ nginx_etc_dir }}/upstream"
+
+nginx_open_file_cache: "max=1000 inactive=20s"
+nginx_open_file_cache_valid: "30s"
+nginx_open_file_cache_min_uses: "2"
+nginx_open_file_cache_errors: "on"

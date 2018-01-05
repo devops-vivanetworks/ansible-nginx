@@ -1,0 +1,11 @@
+---
+# handlers file for nginx
+
+- name: reload nginx
+  become: yes
+  become_method: sudo
+  service:
+    name: "{{ nginx_service_name }}"
+    state: reloaded
+  tags:
+    - nginx

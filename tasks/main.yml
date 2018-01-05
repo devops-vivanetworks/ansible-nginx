@@ -1,0 +1,105 @@
+---
+
+- block: 
+    - name: add apt-key for nginx
+      apt_key:
+        url: "http://nginx.org/keys/nginx_signing.key"
+        state: present
+        id: 7BD9BF62
+
+    - name: add nginx repository
+      apt_repository:
+        repo: "deb http://nginx.org/packages/ubuntu/ {{ ansible_distribution_release }} nginx"
+        update_cache: yes
+ 
+    - name: install nginx
+      apt:
+        name: nginx
+        state: present
+        update_cache: yes
+        cache_valid_time: "{{ apt_cache_valid_time | default(omit) }}"
+        install_recommends: no
+
+    - name: create additional config dirs
+      file:
+        path: "{{ item }}"
+        state: directory
+      with_items:
+         - "{{ nginx_ssl_dir }}"
+         - "{{ nginx_sites_available_dir }}"
+         - "{{ nginx_sites_enabled_dir }}"
+         - "{{ nginx_upstream_dir }}"
+
+    - name: ensure nginx service running and enabled on boot
+      service:
+        name: "{{ nginx_service_name }}"
+        enabled: yes
+        state: started
+
+    - name: copy nginx configuration files
+      template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        backup: yes
+        mode: "0644"
+        validate: "{{ item.validate | default(omit)}}"
+      with_items:
+        - src: "gzip_conf.j2"
+          dest: "{{ nginx_conf_dir }}/gzip.conf"
+        - src: "ssl_conf.j2"
+          dest: "{{ nginx_conf_dir }}/ssl.conf"
+        - src: "cache-file-descriptors_conf.j2"
+          dest: "{{ nginx_conf_dir }}/cache-file-descriptors.conf"
+        - src: "nginx_conf.j2"
+          dest: "{{ nginx_etc_dir }}/nginx.conf"
+      notify:
+        - reload nginx
+
+    - name: remove default sites configuration
+      file:
+        path: "/etc/nginx/conf.d/{{ item }}"
+        state: absent
+      with_items:
+        - "default.conf"
+        - "example_ssl.conf"
+      notify:
+        - reload nginx
+
+    - name: copy new default site configuration
+      template:
+        src: default_conf.j2
+        dest: "{{ nginx_sites_available_dir }}/default.conf"
+        backup: yes
+        mode: "0644"
+      notify:
+        - reload nginx
+
+    - name: enable new default site configuration
+      file:
+        src: "{{ nginx_sites_available_dir }}/default.conf"
+        dest: "{{ nginx_sites_enabled_dir }}/default.conf"
+        state: link
+      notify:
+        - reload nginx
+
+    - name: copy nginx status site configuration
+      template:
+        src: nginx_status_conf.j2
+        dest: "{{ nginx_sites_available_dir }}/nginx_status.conf"
+        backup: yes
+        mode: "0644"
+      notify:
+        - reload nginx
+
+    - name: enable nginx status site configuration
+      file:
+        src: "{{ nginx_sites_available_dir }}/nginx_status.conf"
+        dest: "{{ nginx_sites_enabled_dir }}/nginx_status.conf"
+        state: link
+      notify:
+        - reload nginx
+
+  become: yes
+  become_method: sudo
+  tags:
+    - nginx
